@@ -1,9 +1,9 @@
 ------------------------------------------------
-Stack's dump at [0x00EFFA28]
+Stack's dump at [0x00B3F81C]
 Size:     0
 Capacity: 2
-Data's memory sector: [0x00054B70] - [0x00054B74]
+Data's memory sector: [0x001C4B70] - [0x001C4B74]
 [i] -   Pointer   - Data:
-[0]: [0x00054B70] - [Empty]
-[1]: [0x00054B74] - [Empty]
+[0]: [0x001C4B70] - [Empty]
+[1]: [0x001C4B74] - [Empty]
 ------------------------------------------------

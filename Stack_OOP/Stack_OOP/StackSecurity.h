@@ -1,18 +1,22 @@
 #pragma once
 class StackSecurity
 {
+public:
 	StackSecurity();
-	static bool canaryTest(char canary);
+	bool canaryTest(char canary);
+	char GetCanarySample();
 private:
-	static char canarySample;
+	char canarySample;
 };
 
 StackSecurity::StackSecurity() {
-	srand(std::time(0));
-	canarySample = rand() % sizeof(char);
+	srand((unsigned int)std::time(0));
+	canarySample = (char)rand();
 }
-
 bool StackSecurity::canaryTest(char canary) {
 	return canary == canarySample;
+}
+char StackSecurity::GetCanarySample() {
+	return canarySample;
 }
 
