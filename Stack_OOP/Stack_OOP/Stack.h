@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <stdlib.h>
 #include <assert.h>
 #include "Print.h"
@@ -38,22 +38,28 @@ public:
 
 	//Print information about stack to file or stdout
 	void PrintDump(FILE* file);
+
+	long long GetHash();
+
 private:
 	char enterCanary;
-	StackSecurity securityModule;
 	T* data;
 	size_t capacity, size;
+	long long hash;
 	char exitCanary;
+
+	long long CalculateHash();
+
 
 	//Change size of data array
 	void Resize(size_t newSize);
 	//Test for error codes
 	void OK(ErrorCodes code, const char* funcName);
-	//Print element data[index] in format: index - pointer - element
-	void PrintElement(FILE* file, int index);
+	//Print element in format [elem]
+	void PrintElement(FILE* file, T* elem);
 	//returns true if all canarys are OK. Else returns false
 	bool CanaryCheck() {
-		return securityModule.canaryTest(enterCanary) && securityModule.canaryTest(exitCanary);
+		return StackSecurity::canaryTest(enterCanary) && StackSecurity::canaryTest(exitCanary);
 	}
 };
 
@@ -63,8 +69,10 @@ Stack<T>::Stack(int cap) {
 	data = (T*)calloc(cap, sizeof(T));
 	capacity = cap;
 	size = 0;
-	enterCanary = securityModule.GetCanarySample();
-	exitCanary = securityModule.GetCanarySample();
+	hash = 0;
+	StackSecurity::Init();
+	enterCanary = StackSecurity::GetCanarySample();
+	exitCanary = StackSecurity::GetCanarySample();
 }
 
 template <typename T>
@@ -72,8 +80,10 @@ Stack<T>::Stack() {
 	data = nullptr;
 	capacity = 0;
 	size = 0;
-	enterCanary = securityModule.GetCanarySample();
-	exitCanary = securityModule.GetCanarySample();
+	hash = 0;
+	StackSecurity::Init();
+	enterCanary = StackSecurity::GetCanarySample();
+	exitCanary = StackSecurity::GetCanarySample();
 }
 
 template <typename T>
@@ -88,7 +98,7 @@ void Stack<T>::Push(T value) {
 	if (!CanaryCheck())
 		OK(ERR_CANARY_BREAKE, "Push()");
 	if (size >= capacity) {
-		Resize(size + 1);
+		Resize((size + (size == 0)) * 2);
 		if (data == nullptr) OK(ERR_OUT_OF_MEMORY, "Push()");
 	}
 	data[size] = value;
@@ -166,8 +176,24 @@ size_t Stack<T>::GetCapacity() {
 	return capacity;
 }
 
+template <typename T>
+long long Stack<T>::CalculateHash()
+{
+	hash = 1;
+	char* dataToHash = (char*)data;
+	for (size_t i = 0; i < capacity * sizeof(T); i++) {
+		hash *= (long long)abs(dataToHash[i]) + i;
+		hash = hash % 286331153;
+	}
+	return hash;
+}
 
-
+template <typename T>
+long long Stack<T>::GetHash() {
+	if (hash == 0)
+		CalculateHash();
+	return hash;
+}
 
 /*
 	Dump functions:
@@ -180,10 +206,13 @@ void Stack<T>::PrintDump(FILE* file) {
 	fprintf(file, "------------------------------------------------\n");
 	fprintf(file, "Stack's dump at [0x%p]\n", this);
 	fprintf(file, "Size:     %d\nCapacity: %d\n", size, capacity);
+	fprintf(file, "Stack's hash: %lld\n", GetHash());
 	fprintf(file, "Data's memory sector: [0x%p] - [0x%p]\n", data, data + capacity - 1);
 	fprintf(file, "[i] -   Pointer   - Data:\n");
 	for (unsigned int i = 0; i < size; i++) {
-		PrintElement(file, i);
+		fprintf(file, "[%d]: [0x%p] - ", i, data + i);
+		PrintElement(file, &data[i]);
+		fprintf(file, "\n");
 	}
 	for (int i = size; i < capacity; i++) {
 		fprintf(file, "[%d]: [0x%p] - [Empty]\n", i, data + i);
@@ -192,46 +221,46 @@ void Stack<T>::PrintDump(FILE* file) {
 }
 
 template <typename T>
-void Stack<T>::PrintElement(FILE* file, int index) {
-	fprintf(file, "[%d]: [0x%p] - [0x%p]\n", index, data + index, data[index]);
+void Stack<T>::PrintElement(FILE* file, T* elem) {
+	fprintf(file, "[0x%p]", *elem);
 }
 
 template <>
-void Stack<int>::PrintElement(FILE* file, int index) {
-	fprintf(file, "[%d]: [0x%p] - [%d]\n", index, data + index, data[index]);
+void Stack<int>::PrintElement(FILE* file, int* elem) {
+	fprintf(file, "[%d]", *elem);
 }
 
 template <>
-void Stack<long>::PrintElement(FILE* file, int index) {
-	fprintf(file, "[%d]: [0x%p] - [%ld]\n", index, data + index, data[index]);
+void Stack<long>::PrintElement(FILE* file, long* elem) {
+	fprintf(file, "[%ld]", *elem);
 }
 
 template <>
-void Stack<long long>::PrintElement(FILE* file, int index) {
-	fprintf(file, "[%d]: [0x%p] - [%lld]\n", index, data + index, data[index]);
+void Stack<long long>::PrintElement(FILE* file, long long* elem) {
+	fprintf(file, "[%Ld]", *elem);
 }
 
 template <>
-void Stack<float>::PrintElement(FILE* file, int index) {
-	fprintf(file, "[%d]: [0x%p] - [%g]\n", index, data + index, data[index]);
+void Stack<float>::PrintElement(FILE* file, float* elem) {
+	fprintf(file, "[%g]", *elem);
 }
 
 template <>
-void Stack<double>::PrintElement(FILE* file, int index) {
-	fprintf(file, "[%d]: [0x%p] - [%lg]\n", index, data + index, data[index]);
+void Stack<double>::PrintElement(FILE* file, double* elem) {
+	fprintf(file, "[%lg]", *elem);
 }
 
 template <>
-void Stack<long double>::PrintElement(FILE* file, int index) {
-	fprintf(file, "[%d]: [0x%p] - [%Lg]\n", index, data + index, data[index]);
+void Stack<long double>::PrintElement(FILE* file, long double* elem) {
+	fprintf(file, "[%Lg]", *elem);
 }
 
 template <>
-void Stack<char>::PrintElement(FILE* file, int index) {
-	fprintf(file, "[%d]: [0x%p] - ['%c']\n", index, data + index, data[index]);
+void Stack<char>::PrintElement(FILE* file, char* elem) {
+	fprintf(file, "[%c]", *elem);
 }
 
 template <>
-void Stack<char*>::PrintElement(FILE* file, int index) {
-	fprintf(file, "[%d]: [0x%p] - [\"%s\"]\n", index, data + index, data[index]);
+void Stack<char*>::PrintElement(FILE* file, char** elem) {
+	fprintf(file, "[%s]", *elem);
 }
